@@ -14,7 +14,6 @@ Each skill is a self-contained module of specialized knowledge—best practices,
 | `modern-inertia` | Inertia.js v3 best practices with Laravel + React |
 | `modern-laravel` | Laravel 12 and PHP 8.4/8.5 modern patterns |
 | `modern-nextjs` | Next.js 16.2 best practices, App Router, React 19.2 |
-| `payzone-nextjs-convex` | Payzone stack — Next.js + Convex patterns |
 | `universal-docs` | Documentation generator for READMEs, ADRs, API refs |
 
 ---
