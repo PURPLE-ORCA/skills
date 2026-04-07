@@ -111,8 +111,3 @@ When instructed to build or refactor a UI component:
 3. **Document:** Add a short JSDoc comment to the Parent component explaining the Context state it provides.
 4. **Export:** Always attach sub-components to the parent using dot notation (`Parent.Child = Child`) before exporting.
 ```
-***
-
-This completely blocks the AI from trying to be "clever" with massive configuration objects. It forces a clean, declarative UI structure that fits your exact constraints. 
-
-Push this one up. Do you want to hit the `maestro-yaml-architect` next so your testing pipeline stops failing, or do you want to tackle `modern-reanimated-3` for the Expo performance?
