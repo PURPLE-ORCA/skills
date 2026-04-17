@@ -1,69 +1,90 @@
 ---
 name: nextjs-convex-role-guards
 description: >
-  Next.js + Convex UI-level access control and backend security mirroring. Use when implementing role-based access, protecting admin routes, or building layout wrappers. Triggers on "layout guard", "role check", "protect route", "admin only", "403 forbidden", or "authorization wrapper". Enforces in-place 403 rendering, the "no-redirect" rule, and mandatory Convex backend validation.
+  Next.js + Convex role-based access control. Use when implementing role guards, admin routes, protected layouts, Next.js middleware, JWT claims, or Convex auth role enforcement. Triggers on "layout guard", "role check", "protect route", "admin only", "403 forbidden", "authorization wrapper", "proxy.ts", "middleware.ts", or "customClaims". Enforces edge authorization, JWT role claims, and backend validation.
 ---
 
 # Next.js + Convex Role Guards
 
-Frontend authorization is an illusion. A UI guard is just visual sugar to prevent a "Flash of Content" and stop users from seeing buttons they cannot click. If you do not mirror the exact same role checks in your Convex backend, you are building a fake door. Furthermore, redirecting an unauthorized, authenticated user away from their intended URL destroys context and prevents easy account switching.
+Client-side layout guards are the wrong abstraction for RBAC. They thrash preserved Next.js layouts, add a JS and data waterfall, and leak protected UI before auth resolves. Enforce role access at the Edge with JWT claims, keep the React tree pure, and mirror the real check in Convex mutations and queries.
 
-This skill enforces strict in-place 403 rendering and mandates the backend mirror.
+This skill enforces edge middleware gating, short-lived role claims, and backend authorization as the source of truth.
 
 ## DO / DON'T Quick Reference
 
-| DO (Defensive Auth) | DON'T (The Anti-Pattern) | Why |
+| DO (Modern Standard) | DON'T (Anti-Pattern) | Why |
 |---|---|---|
-| Render "Access Denied" (403) *in place* | Redirect unauthorized users to `/` or `/login` | The "No-Redirect" rule preserves the URL so the user can click "Switch Account" and instantly load the intended page. |
-| Wait for both `!isLoading` AND `user !== undefined` | Render children based only on `isAuthenticated` | `isAuthenticated` resolves before the `user` object fetches. Failing to wait for the user data causes a "Flash of Content." |
-| Wrap the specific layout content (e.g., `<main>`) | Wrap `<html>` and `<body>` in the Guard | Wrapping the document root breaks Next.js 16.2 structure and destroys global error boundaries. |
-| Enforce roles via Convex `customMutation` / `customQuery` | Rely solely on the Next.js `layout.tsx` for security | Frontend components can be bypassed via the browser console or direct API requests. |
+| Inject `role` into Convex JWT `customClaims` | Fetch the user document in client guards | The claim travels with the token, so the Edge can decide instantly without a DB round-trip. |
+| Gate protected routes in `src/proxy.ts` or `src/middleware.ts` | Wrap protected layouts in a client-side `<RoleGuard>` | Middleware blocks unauthorized users before React loads, avoiding layout remounts and UI flashes. |
+| Keep protected layouts as pure UI shells | Put auth logic in `(dashboard)/layout.tsx` | Layout guards force client-side re-evaluation on navigation and break the preserved layout model. |
+| Recheck roles in Convex backend functions | Trust middleware as the only security layer | Middleware is UX and edge performance, not authorization. Backend checks stop direct API abuse. |
 
 ## Execution Protocol
 
 When instructed to protect a route or implement role-based access:
 
-### 1. Expose the Role (Backend)
-Ensure the `users.current` Convex query explicitly returns the `role` field. The frontend cannot guard what it cannot read.
+### 1. Inject the Role Claim (Convex Backend)
+Add `customClaims` in `convex/auth.ts` so the session JWT carries the user's role. Keep the JWT short-lived so role changes do not linger.
 
-### 2. Implement the `RoleGuard` Component
-Create a `"use client"` wrapper (`src/components/auth/role-guard.tsx`) that explicitly handles four states. Do not merge these states:
-1.  **Loading:** `isLoading || (isAuthenticated && user === undefined)`. Return a spinner.
-2.  **Unauthenticated:** `!isAuthenticated`. Return a sign-in prompt.
-3.  **Unauthorized (403):** `user?.role !== requiredRole`. Render a hard error UI *in place* with buttons to "Return Home" and "Switch Account" (`signOut()`). **DO NOT use `router.push('/')` here.**
-4.  **Authorized:** Return `<>{children}</>`.
+```ts
+import { convexAuth } from '@convex-dev/auth/server';
 
-### 3. Wrap the Layout
-Inject the `<RoleGuard requiredRole="admin">` into the specific route group's `layout.tsx` (e.g., `(dashboard)/layout.tsx`). It must wrap the visual content, not the root HTML document.
-
-### 4. The Mandatory Backend Mirror (Critical)
-You must immediately enforce the identical role check in the Convex backend using `convex-helpers`. Do not leave the backend exposed.
-
-```typescript
-// convex/utils.ts
-import { mutation } from "./_generated/server";
-import { getAuthUserId } from "@convex-dev/auth/server";
-import { customMutation } from "convex-helpers/server/customFunctions";
-
-export const adminMutation = customMutation(mutation, {
-  args: {},
-  input: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("401: Unauthorized");
-    
-    const user = await ctx.db.get(userId);
-    if (user?.role !== "admin") {
-      throw new Error("403: Admin privileges required");
-    }
-    
-    return { ctx: { user }, args: {} };
-  }
+export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
+  providers: [/* ... */],
+  jwt: {
+    durationMs: 15 * 60 * 1000,
+    customClaims: async (ctx, { userId }) => {
+      const user = await ctx.db.get(userId);
+      return { role: user?.role ?? 'user' };
+    },
+  },
 });
-// Usage: export const myAdminAction = adminMutation({ ... })
 ```
 
-## The Edge Cases / Anti-Patterns
+### 2. Intercept at the Edge
+Read the role claim in `src/proxy.ts` or `src/middleware.ts`. Use local JWT decoding only. Do not query Convex from middleware.
 
-**When NOT to use this skill:**
-* **Edge Middleware Authorization:** Next.js `proxy.ts` (middleware) cannot easily read Convex database roles without making an expensive external HTTP fetch on every single edge request. Do not attempt to read the Convex `user.role` inside Next.js middleware. Use the Client-side `RoleGuard` for UX, and the Convex `adminMutation` for true security.
-* **Public Data with Admin Controls:** If a page is public but has "Admin Only" edit buttons, do not wrap the entire page in `<RoleGuard>`. Instead, fetch the user at the page level and conditionally render the specific `<EditButton>` components.
+```ts
+function decodeJwtClaims(token: string | undefined): { role?: string } | null {
+  if (!token) return null;
+  try {
+    const payload = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = payload.padEnd(Math.ceil(payload.length / 4) * 4, '=');
+    return JSON.parse(Buffer.from(padded, 'base64').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
+  const isPublic = isPublicPage(request);
+  const isAuthenticated = await convexAuth.isAuthenticated();
+  const token = await convexAuth.getToken();
+  const claims = decodeJwtClaims(token);
+  const role = claims?.role;
+
+  if (isPublic && isAuthenticated && role === 'admin') {
+    return nextjsMiddlewareRedirect(request, '/dashboard');
+  }
+
+  if (!isPublic && !isAuthenticated) {
+    return nextjsMiddlewareRedirect(request, '/login');
+  }
+
+  if (!isPublic && isAuthenticated && role && role !== 'admin') {
+    return nextjsMiddlewareRedirect(request, '/login?forbidden=1');
+  }
+});
+```
+
+### 3. Strip the React Guard
+Remove client-side `<RoleGuard>` wrappers from protected layouts like `src/app/(dashboard)/layout.tsx`. Leave only the UI shell.
+
+### 4. Mirror Authorization in Convex
+Every privileged query or mutation must still enforce the role check server-side. Middleware blocks bad UX; Convex blocks bad actors.
+
+## The Edge Case
+
+* JWT claims are stale until refresh. If role changes must take effect immediately, force session refresh or revoke the session.
+* Middleware is not the security boundary. Never treat Edge redirects as authorization for Convex data or actions.
+* If a page is public but contains isolated admin controls, guard the controls, not the whole route.
