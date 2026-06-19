@@ -10,6 +10,7 @@ Each skill is a self-contained module of specialized knowledge—best practices,
 
 | Skill | Description |
 |-------|-------------|
+| `antigravity` | Delegate coding to Google Antigravity CLI (agy) with tested workflows |
 | `expo-i18n` | Complete i18n/localization for React Native Expo apps |
 | `modern-inertia` | Inertia.js v3 best practices with Laravel + React |
 | `modern-laravel` | Laravel 12 and PHP 8.4/8.5 modern patterns |
