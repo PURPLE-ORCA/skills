@@ -4,7 +4,6 @@ description: "Delegate coding to Google Antigravity CLI (agy). Use when the user
 version: 1.0.0
 author: Hermes Agent
 license: MIT
-platforms: [linux, macos]
 metadata:
   hermes:
     tags: [Coding-Agent, Antigravity, Google, Gemini, Delegation]
@@ -28,13 +27,11 @@ Key rules:
 ## When to Use Antigravity Over Codex
 
 - User explicitly asks for Antigravity/Google/Gemini
-- You want Google's Gemini models instead of OpenAI's
+- You want Google's Gemini models instead
 - You want built-in checkpointing (`/restore`) before file changes
 - You want sandboxing via macOS Seatbelt (lightweight, no Docker needed)
 - You want Plan Mode (read-only research before implementation)
 - Parallel work — run Antigravity alongside Codex for batch tasks
-- **Deslop/clean tasks** — see [[code-clean]] skill
-- **LinkedIn content** — see [[linkedin-post-writer]] skill (Gemini models for writing)
 
 ## Prerequisites
 
