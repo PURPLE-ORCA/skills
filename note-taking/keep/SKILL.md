@@ -101,13 +101,10 @@ If `ACTIVEPROJECTS.md` doesn't exist, fall back to `ls PROJECTS/ACTIVE/` for dir
 
 ### 5. Compare to Existing Stack Equivalents
 
-Cross-reference against tools the user already uses:
-- **Convex** — built-in file storage, auth, realtime, DB — if the tool overlaps, explain where Convex's native solution is better vs where the new tool adds value
-- **Laravel Flysystem** — built-in S3/GCS abstraction — if library is about file storage, Laravel already abstracts this
-- **HeroUI Native** — UI component lib — if tool is UI, compare against HeroUI
-- **Hermes skills** — if tool is an automation/workflow thing, check if a skill exists
-- **Laravel + Inertia** — for fullstack web, this is the user's dominant pattern
-- **Expo Router** — for React Native navigation patterns
+Cross-reference against tools the user already uses in their stack:
+- Check the user's backend framework, UI library, auth solution, storage layer, and mobile framework
+- If the tool overlaps with an existing dependency, explain where the existing solution is better vs where the new tool adds value
+- Check if a Hermes skill already covers the use case before recommending a new tool
 
 ### 6. Write to Vault
 

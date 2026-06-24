@@ -44,7 +44,7 @@ Skip: decorative slides, repeated headers/footers, reference links sections.
 Ask these questions of every source:
 
 **1. Are we mentioned?**
-- Search for your project name in extracted text (`grep -i "TAHAQAQ\|your-project-name"`)
+- Search for your project name in extracted text (`grep -i "your-project-name"`)
 - In vision slides, scan for your project in tables, examples, case study lists
 - **If found → this is the single most valuable finding.** The organizers pre-validated your project. Use it.
 
@@ -95,14 +95,14 @@ Write to `PROJECTS/<project>/RESEARCHS/RESEARCH_<TOPIC>.md` following the format
 6. Action items (concrete, numbered, checkable)
 7. Comparison to previous batch of sources (if cumulative)
 
-**Pitfall:** Every exploit needs a concrete pitch line, not just a description. The user needs to be able to drop these into their deck verbatim. Write the quote in their pitch language (French for Nazahathon, Arabic for Arabic-speaking juries, etc.).
+**Pitfall:** Every exploit needs a concrete pitch line, not just a description. The user needs to be able to drop these into their deck verbatim. Write the quote in the appropriate language for the jury (e.g. French for French-speaking juries, Arabic for Arabic-speaking juries).
 
 **Pitfall:** Tag with `#argumentation #juryprep` so the user can cross-reference when building their demo script.
 
-## Example Flow (from Nazahathon session)
+## Example Flow
 
 1. Detected: Governance PDF (100 pages, text-extractable) + Webinaire PDF (34 slides, image-only)
 2. Extracted: pymupdf for Governance → vision_analyze for Webinaire (slides 1,6,11,12,13,20,22,32)
-3. Found: TAHAQAQ cited on slide 44, competitive tech landscape on slide 45, judging criteria on slide 22, 3 structural frictions on slide 11
+3. Found: your-project cited on slide 44, competitive tech landscape on slide 45, judging criteria on slide 22, 3 structural frictions on slide 11
 4. Produced: 5 Exploit sections, Competitive Matrix, Comparison table, 9 Action Items
-5. Output: `RESEARCH_NAZAHATHON_GOVERNANCE_WEBINAIRE.md` with wikilinks to previous research
+5. Output: `RESEARCH_<TOPIC>.md` with wikilinks to previous research

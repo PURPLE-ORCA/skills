@@ -91,7 +91,7 @@ When a PDF has **no extractable text** (all pages are image-based — common for
 
 When the user asks you to analyze documents and produce a research doc **"like the one before"** — find the closest existing doc and use its structure as a template:
 
-1. **Find the template** — `read_file` the most recent analogous research doc in the same directory (e.g. `RESEARCH_INPPLC_ORGANIZATION_PDFS.md`)
+1. **Find the template** — `read_file` the most recent analogous research doc in the same directory (e.g. `RESEARCH_<ORGANIZATION>_DOCUMENTS.md`)
 2. **Preserve the format** — copy the section hierarchy, table patterns, heading levels, pitch-line callout style, and tag conventions
 3. **Only add structure the content demands** — if the new PDFs introduce genuinely new patterns (e.g. project pre-validated, competitive tech landscape), create new sections that mirror the template's style
 4. **Add a Comparison section** at the end contrasting the new sources vs the old ones — judges (and the user) value seeing how findings compound
@@ -111,12 +111,12 @@ After extraction, the research pipeline continues:
 
 ## Example: Competitive Intelligence from Training Materials
 
-This pattern was used to extract strategic intelligence from INPPLC's own Nazahathon training PDFs:
+This pattern was used to extract strategic intelligence from an organization's own competition training PDFs:
 
 - Extracted 3 PDFs (8 + 23 + 41 pages)
 - Mined 7 professional Arabic terms (e.g., "غياب آثار الجريمة", "تطبيع المواطنين")
-- Mapped each term to TAHAQAQ's value proposition
-- Wrote `RESEARCH_INPPLC_ORGANIZATION_PDFS.md` with exploitation strategies
+- Mapped each term to your project's value proposition
+- Wrote `RESEARCH_<ORGANIZATION>_DOCUMENTS.md` with exploitation strategies
 - Updated `RESEARCH_MASTER_INDEX.md`
 
 The result: pitch language that mirrors the jury's own framework, creating instant credibility.
