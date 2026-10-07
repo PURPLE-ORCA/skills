@@ -1,134 +1,66 @@
 ---
 name: modern-nextjs
-description: >
-  Modern Next.js 16.2 best practices, App Router architecture, React 19.2 integration, and MCP Agent flows. Use when writing, reviewing, refactoring, or migrating Next.js code. Triggers on "next.js 16", "update nextjs", "nextjs caching", "proxy.ts", "middleware.ts", "AGENTS.md", "use cache", or "transitionTypes". MUST use this skill to prevent legacy Next.js 14/15 anti-patterns.
+description: "Next.js 16: use for App Router code, upgrades, or debugging."
 ---
 
-# Modern Next.js (v16.2) Complete Guide
+# Modern Next.js 16
 
-This skill enforces strict Next.js 16.2 architecture. The framework has fundamentally changed how caching, middleware, route parameters, and AI-assisted debugging work.
+This skill targets stable Next.js 16.4 and retains the 16.3 patterns that still matter. It guides App Router implementation, debugging, and upgrades. It does not tell a project to upgrade. The installed version's bundled docs and the repository's instructions take precedence when they differ.
 
-Every section follows: **what it is** → **DO this** → **DON'T do that** → **migration path**.
+## When to use
 
-## Critical DO / DON'T Quick Reference
+- Build, review, refactor, debug, or migrate a Next.js App Router app.
+- Work on Cache Components, streaming, prefetching, or navigation responsiveness.
+- Upgrade to Next.js 16 or distinguish stable behavior from canary and experimental behavior.
 
-| DO (Modern Next.js 16.2) | DON'T (Legacy/Anti-pattern) | Why |
+## Prerequisites
+
+- Check `package.json` and the lockfile for the installed `next`, `react`, and `react-dom` versions and the package manager.
+- Read the repository's `AGENTS.md` and version-matched docs under `node_modules/next/dist/docs/` when available.
+- Use the current official docs when the installed package does not bundle the needed reference. No new dependency is required for this skill.
+
+## How to use
+
+Read the reference that matches the task before using a release-specific API. Inspect the existing route, config, scripts, and tests first. Keep fixes scoped to the route or boundary that owns the behavior. For a framework upgrade, follow [`references/upgrading-to-next-16.md`](references/upgrading-to-next-16.md).
+
+## Quick reference
+
+| Do | Do not | Why |
 |---|---|---|
-| Use `proxy.ts` | Use `middleware.ts` | The file was renamed to `proxy.ts` and runs on the Node.js runtime. It clarifies it is a network boundary, not heavy business logic. |
-| `await params` and `await searchParams` | Access `params.slug` synchronously | Route parameters are now Promises. Synchronous access will throw a runtime error. |
-| `use cache` directive | Rely on Vercel's default aggressive caching | Caching is now **opt-in** via Cache Components. Dynamic data runs at request time unless explicitly cached. |
-| `<Link transitionTypes={['slide']}>` | Bring in heavy third-party animation libraries | Next.js 16.2 natively integrates React 19.2 View Transitions into the router via the `transitionTypes` prop. |
-| Use `updateTag('my-data')` in Server Actions | Rely solely on `revalidatePath` | `updateTag` provides strict "read-your-writes" semantics for instant UI updates. |
-| Add an `AGENTS.md` file to the root | Assume AI agents understand your app | 16.2 ships with bundled docs and MCP devtools. `AGENTS.md` directs the LLM to read local context first. |
-| Run `eslint` or `biome` directly | Run `next lint` | The `next lint` command is officially removed. |
-| Explicit `default.js/tsx` in Parallel Routes | Leave parallel route slots empty | Builds will now fail without a `default.js` in every parallel route slot. |
+| Await request-time APIs such as `params`, `searchParams`, `cookies()`, and `headers()`. | Read them synchronously. | Next.js 16 treats these APIs as asynchronous. |
+| Use `proxy.ts` for the network boundary when migrating to the Next.js 16 convention. | Describe `middleware.ts` as removed or assume `proxy` supports Edge. | `middleware` is deprecated; `proxy` uses the Node.js runtime and does not support Edge. |
+| Check whether `cacheComponents` is enabled before using Cache Components. | Assume `'use cache'` is active in every existing app. | Existing apps must opt into the model; 16.4 enables it by default only in newly created apps. |
+| Use `revalidateTag(tag, 'max')` for stale-while-revalidate, or `updateTag` in a Server Action for read-your-writes. | Use the deprecated one-argument `revalidateTag` form. | The single-argument form is deprecated and produces a TypeScript error. |
+| Add `default.tsx` to every parallel route slot. | Leave a slot without a default. | Next.js 16 builds fail when a parallel route slot lacks one. |
+| Run ESLint or Biome directly. | Use `next lint`. | Next.js 16 removed `next lint`. |
 
----
+## Procedure
 
-## Core Architecture Changes (Next.js 16+)
+1. Identify the installed Next.js version and whether the task uses App Router or Pages Router.
+2. Read the repository instructions. Prefer the installed package's version-matched docs under `node_modules/next/dist/docs/`; if `AGENTS.md` includes a framework-generated docs pointer, follow it.
+3. Classify the route behavior: request-time, cached, streamed, prefetched, or guaranteed static.
+4. Load the matching reference below. Keep experimental APIs opt-in and version-gated.
+5. Implement the smallest change that preserves the app's current architecture and business rules.
+6. Run the scripts defined by the project. For release-sensitive behavior, verify against a production build, not only dev mode.
 
-### 1. The `proxy.ts` Migration
-**What it is:** `middleware.ts` is gone. It is now `proxy.ts`, running on the Node.js runtime by default (as of 15.5/16.0). 
+## Pitfalls
 
-```typescript
-// ---- DON'T: The Legacy Next 14/15 Way ----
-// middleware.ts
-export function middleware(request: NextRequest) { ... }
+- Next.js 16.4 enables Cache Components by default in newly created apps. Do not assume existing apps have the flag enabled.
+- `npx next@canary upgrade --agent=latest` uses canary upgrade tooling and targets the `latest` release policy. It does not mean the app is being upgraded to a canary release.
+- Prefetching behavior is production-only. Dev mode alone cannot verify what a user sees during a prefetched navigation.
+- A preview or experimental API can change before stable release. Check the installed package docs before recommending it.
 
-// ---- DO: The Modern Next 16 Way ----
-// proxy.ts (in root or /src)
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+## The edge case
 
-export function proxy(request: NextRequest) {
-  // Lightweight routing layer
-  const token = request.cookies.get('session');
-  if (!token) return NextResponse.redirect(new URL('/login', request.url));
-  return NextResponse.next();
-}
-```
+These rules target the App Router. For Pages Router code, older framework versions, or apps that intentionally keep Edge middleware, follow the installed version's docs instead of applying App Router examples mechanically.
 
-### 2. Asynchronous Route APIs
-**What it is:** `params`, `searchParams`, `cookies()`, `headers()`, and `draftMode()` are strictly asynchronous. 
+## Verification
 
-```tsx
-// ---- DON'T: Synchronous Access (Will Crash) ----
-export default function BlogPost({ params }: { params: { slug: string } }) {
-  const post = getPost(params.slug); 
-  return <h1>{post.title}</h1>;
-}
+Confirm the changed API exists in the installed version's docs, run the project's typecheck and build scripts, and test the affected route in production mode when caching or prefetching is involved.
 
-// ---- DO: Asynchronous Access ----
-export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
-  const resolvedParams = await params;
-  const post = await getPost(resolvedParams.slug);
-  return <h1>{post.title}</h1>;
-}
-```
+## References
 
-### 3. Opt-In Cache Components (`use cache`)
-**What it is:** Next.js stopped aggressively caching dynamic data. The `experimental.ppr` and `experimental.dynamicIO` flags are dead. To cache a component or function, explicitly opt-in.
-
-```tsx
-// ---- DO: Explicit Caching ----
-import { db } from '@/lib/db';
-
-export default async function CachedProductList() {
-  'use cache'; // Opt-in to the new Cache Components model
-  
-  const products = await db.products.findMany();
-  return (
-    <ul>
-      {products.map(p => <li key={p.id}>{p.name}</li>)}
-    </ul>
-  );
-}
-```
-
----
-
-## The 16.2 Features (March 2026)
-
-### 1. AI-Assisted Debugging (MCP & `AGENTS.md`)
-Next.js 16.2 treats coding agents as first-class users. 
-*   **DO:** Create an `AGENTS.md` file in the root directory that tells your AI assistant to read the bundled docs (`node_modules/next/dist/docs/`) before writing code.
-*   **DO:** Use the `next-devtools-mcp` package so your AI can inspect React component trees, read server logs, and parse hydration diffs directly from the dev server.
-
-### 2. Native View Transitions on `<Link>`
-You no longer need Framer Motion just to slide between pages.
-
-```tsx
-import Link from 'next/link';
-
-// ---- DO: Native Next.js 16.2 Transitions ----
-export function Navigation() {
-  return (
-    <Link href="/dashboard" transitionTypes={['slide']}>
-      Dashboard
-    </Link>
-  );
-}
-```
-
-### 3. The Stable Adapter API
-Next.js 16.2 officially absorbed the OpenNext philosophy. Next.js now produces a typed, versioned build output.
-*   **DON'T:** Hack build scripts to deploy to Cloudflare, AWS, or Netlify.
-*   **DO:** Use the official Next.js Build Adapters API.
-
----
-
-## Anti-Patterns to Fix Immediately
-
-1. **Ignoring Hydration Diffs:** Next.js 16.2 explicitly shows `+ Client / - Server` diffs in the terminal. Do not ignore these; fix the React mismatch.
-2. **Missing `default.tsx`:** Every parallel route slot must have an explicit `default.tsx`. If you don't need a default state, return `null`.
-3. **Using `next/legacy/image`:** The legacy image component is officially deprecated. Furthermore, `images.minimumCacheTTL` now defaults to 4 hours (up from 60s).
-4. **Keeping AMP:** AMP support has been completely ripped out of the framework. Remove all `useAmp` hooks.
-
-## Migration Execution Checklist
-1. Rename `middleware.ts` to `proxy.ts` and rename the exported function to `export function proxy(...)`.
-2. Wrap all `params` and `searchParams` usages in `await`. Update your TypeScript interfaces to reflect `Promise<{ ... }>`.
-3. Wrap `cookies()`, `headers()`, and `draftMode()` in `await`.
-4. Run `npm uninstall eslint-config-next` and configure ESLint Flat Config or Biome directly.
-5. Create an `AGENTS.md` file in the root to hook into 16.2's bundled AI documentation.
-6. Replace `experimental.ppr` in your config with `cacheComponents: true` and start using the `'use cache'` directive.
-```
+- [`references/next-16-core.md`](references/next-16-core.md). Load for shared Next.js 16 App Router and cache rules.
+- [`references/next-16.3.md`](references/next-16.3.md). Load for the 16.3 stable features and Instant Navigations.
+- [`references/next-16.4.md`](references/next-16.4.md). Load for 16.4 Cache Components, static guarantees, agent tools, and performance changes.
+- [`references/upgrading-to-next-16.md`](references/upgrading-to-next-16.md). Load for an upgrade or migration task.

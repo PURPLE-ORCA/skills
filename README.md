@@ -14,7 +14,7 @@ Each skill is a self-contained module of specialized knowledge—best practices,
 | `expo-i18n` | Complete i18n/localization for React Native Expo apps |
 | `modern-inertia` | Inertia.js v3 best practices with Laravel + React |
 | `modern-laravel` | Laravel 12 and PHP 8.4/8.5 modern patterns |
-| `modern-nextjs` | Next.js 16.2 best practices, App Router, React 19.2 |
+| `modern-nextjs` | Next.js 16.4 App Router patterns, React 19.3, and upgrades |
 | `universal-docs` | Documentation generator for READMEs, ADRs, API refs |
 
 ---
